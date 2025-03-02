@@ -1,0 +1,35 @@
+name: Read pull request's inputs
+description: Reads inputs from pull request's body as if the action was started by a manual dispatch
+inputs:
+  workflow-yml-file:
+    description: File path to the action.yml file to parse the expected inputs
+outputs:
+  parsed:
+    value: ${{ steps.python-step.outputs.parsed }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Clone pull-request-inputs
+      uses: actions/checkout@v4
+      with:
+        repository: ZADNE/pull-request-inputs
+        ref: main
+        path: 'pull-request-inputs'
+
+    - name: Create branch release
+      shell: bash
+      run: >
+        gh pr view
+        --json body
+        > ${{ github.workspace }}/pull-request-inputs/body.json
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Run python
+      id: python-step
+      shell: bash
+      run: |
+        echo "parsed=$(python $PYTHON_ARGS)" >> $GITHUB_OUTPUT
+      env:
+        PYTHON_ARGS: ${{ github.workspace }}/pull-request-inputs/read-inputs.py ${{ inputs.workflow-yml-file }} ${{ github.workspace }}/pull-request-inputs/body.json
