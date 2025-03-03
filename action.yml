@@ -10,21 +10,18 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Clone pull-request-inputs
-      uses: actions/checkout@v4
-      with:
-        repository: ZADNE/pull-request-inputs
-        ref: main
-        path: 'pull-request-inputs'
-
     - name: Create branch release
       shell: bash
       run: >
         gh pr view
+        $REF
         --json body
-        > ${{ github.workspace }}/pull-request-inputs/body.json
+        --repo $REPO
+        > ${{ github.action_path }}/body.json
       env:
         GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.action_repository }}
+        REF: ${{ github.action_ref }}
 
     - name: Run python
       id: python-step
@@ -32,4 +29,4 @@ runs:
       run: |
         echo "parsed=$(python $PYTHON_ARGS)" >> $GITHUB_OUTPUT
       env:
-        PYTHON_ARGS: ${{ github.workspace }}/pull-request-inputs/read-inputs.py ${{ inputs.workflow-yml-file }} ${{ github.workspace }}/pull-request-inputs/body.json
+        PYTHON_ARGS: ${{ github.action_path }}/read-inputs.py ${{ inputs.workflow-yml-file }} ${{ github.action_path }}/body.json
