@@ -1,32 +1,43 @@
-name: Read pull request's inputs
+name: Read pull request inputs
 description: Reads inputs from pull request's body as if the action was started by a manual dispatch
 inputs:
-  workflow-yml-file:
-    description: File path to the action.yml file to parse the expected inputs
+  repository:
+    description: Repository that the PR belong to
+  ref:
+    description: Branch of the PR
+  workflow:
+    description: Path to the workflow file that should be parsed for the expected inputs (path relative within the repository)
 outputs:
   parsed:
-    value: ${{ steps.python-step.outputs.parsed }}
+    description: The parsed inputs encoded as JSON
+    value: ${{ toJSON(steps.python-step.outputs) }}
 
 runs:
   using: "composite"
   steps:
-    - name: Create branch release
+    - name: Download pull request body
       shell: bash
       run: >
         gh pr view
-        $REF
+        ${{ inputs.ref }}
         --json body
-        --repo $REPO
-        > ${{ github.action_path }}/body.json
+        --repo ${{ inputs.repository }}
+        > "${{ github.action_path }}/body.json"
       env:
         GH_TOKEN: ${{ github.token }}
-        REPO: ${{ github.action_repository }}
-        REF: ${{ github.action_ref }}
+
+    - name: Clone the workflow file
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.repository }}
+        ref: ${{ inputs.ref }}
+        sparse-checkout: ${{ inputs.workflow }}
+        sparse-checkout-cone-mode: false
 
     - name: Run python
       id: python-step
       shell: bash
       run: |
-        echo "parsed=$(python $PYTHON_ARGS)" >> $GITHUB_OUTPUT
+        echo "$(python $PYTHON_ARGS)" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
       env:
-        PYTHON_ARGS: ${{ github.action_path }}/read-inputs.py ${{ inputs.workflow-yml-file }} ${{ github.action_path }}/body.json
+        PYTHON_ARGS: ${{ github.action_path }}/read-inputs.py ${{ github.workspace }}/${{ inputs.workflow }} ${{ github.action_path }}/body.json
