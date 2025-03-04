@@ -38,6 +38,7 @@ runs:
       id: python-step
       shell: bash
       run: |
+        pip install pyyaml
         echo "$(python $PYTHON_ARGS)" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> $GITHUB_ENV
       env:
         PYTHON_ARGS: ${{ github.action_path }}/read-inputs.py ${{ github.workspace }}/${{ inputs.workflow }} ${{ github.action_path }}/body.json
